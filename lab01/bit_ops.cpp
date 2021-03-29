@@ -5,6 +5,7 @@
 unsigned get_bit(unsigned x,
                  unsigned n) {
     // YOUR CODE HERE
+    return ((x >> n) & 1);
     // Взврат -1 бессмысленный и сделан для правильной компиляции
     return -1;
 }
@@ -13,6 +14,13 @@ unsigned get_bit(unsigned x,
 void set_bit(unsigned * x,
              unsigned n,
              unsigned v) {
+    /*
+    v <<= n;
+    // if v == 1
+    *x = (*x | v) ;
+    //if v == 0
+    
+    */
     // YOUR CODE HERE
 }
 // Меняет значение бита номер n на противоположное.
@@ -20,5 +28,6 @@ void set_bit(unsigned * x,
 void flip_bit(unsigned * x,
               unsigned n) {
     // YOUR CODE HERE
+    *x ^= (1 << n);    
 }
 
