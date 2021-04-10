@@ -5,7 +5,7 @@ bool ll_has_cycle(node *head) {
     node* rabbit = head;
     while(true)
     {
-        if(!rabbit ||!(rabbit->next)) return false;
+        if(!rabbit || !(rabbit->next)) return false;
         rabbit = rabbit->next->next;
         turtle = turtle->next;
         if(rabbit == turtle)
@@ -13,5 +13,4 @@ bool ll_has_cycle(node *head) {
             return true;
         }
     }
-    return false;
 }
