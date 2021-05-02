@@ -138,8 +138,6 @@ TEST_SUITE("Executor"){
             auto instruction = _decoder.Decode(SLTI);
             testI(instruction, _exe);
             CHECK_EQ(instruction->_data, (int)SRCVAL1 < (int)IMM);
-
-
         }
 
         // RV32 Load Instructions are also I-Type
@@ -237,6 +235,28 @@ TEST_SUITE("Executor"){
         }
     }
     /* YOUR CODE HERE */
+
+    TEST_CASE("I-TYPE-CUSTOM-TEST") {
+        SUBCASE("SLTI") {            
+            //31-20 imm = 9(000000001001)
+            //19-15 rs1 = 14(01110)
+            //14-12 funct3 = 010
+            //11-7 rd = 13(01101)
+            //6-0 opcode 0010011   
+            const Word customIMM = 9;
+            const Word customRS1 = 14;
+            const Word customRD = 13;          
+
+            const Word customSLTI = 0b00000000100101110010011010010011;
+            const Word customIP = 0x100;            
+            auto instruction = _decoder.Decode(customSLTI);
+            instruction->_src1Val = 14;
+            _exe.Execute(instruction, customIP);
+            CHECK_EQ(instruction->_nextIp, customIP + 4);
+            CHECK_EQ(instruction->_data, (int)customRS1 < (int)customIMM);            
+        }
+    }
+
 }
 
 void testAlu(InstructionPtr &instruction, Executor &exe){
