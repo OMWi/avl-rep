@@ -25,10 +25,12 @@ public:
         _rf.Read(instrPtr);
         _csrf.Read(instrPtr);
         _exe.Execute(instrPtr, _ip); 
+        _mem.Request(instrPtr);
         _rf.Write(instrPtr);
         _csrf.Write(instrPtr);
-        _csrf.Reset();
-        _csrf.InstructionExecuted();    
+        _csrf.InstructionExecuted(); 
+        _ip = instrPtr->_nextIp;
+        
     }
 
     void Reset(Word ip)
