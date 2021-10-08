@@ -32,8 +32,7 @@ int main() {
         hiMul = _mm_mulhi_pi16(leftRes, rightRes);
         res = _mm_unpacklo_pi16(loMul, hiMul);
         f[4*i] = _m_to_int(res);
-        __m64 temp = _mm_unpackhi_pi32(res, zero);
-        f[4*i+1] = _m_to_int(temp);
+        f[4*i+1] = _m_to_int(_mm_unpackhi_pi32(res, zero));
         res = _mm_unpackhi_pi16(loMul, hiMul);
         f[4*i+2] = _m_to_int(res);
         f[4*i+3] = _m_to_int(_mm_unpackhi_pi32(res, zero));
