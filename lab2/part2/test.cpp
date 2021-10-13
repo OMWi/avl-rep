@@ -17,9 +17,10 @@ public:
         auto start = chrono::high_resolution_clock::now();
 
         unique_lock<mutex> lock(mtx);
-        if (vals.size() == maxSize) {
-            cv.wait(lock);
-        }
+        // if (vals.size() == maxSize) {
+        //     cv.wait(lock);
+        // }
+        cv.wait(lock, [this]{ return vals.size() < maxSize; });
         vals.push(val);
 
         auto end = chrono::high_resolution_clock::now();
@@ -27,18 +28,23 @@ public:
         cout << "size(after push) " << vals.size() << "   elapsed time " << duration.count()*1000*1000 << " mcs" << endl;
     }
     bool pop(uint8_t& val) {
+        auto start = chrono::high_resolution_clock::now();
         unique_lock<mutex> lock(mtx);
         if (vals.empty()) {
             lock.unlock();
             cv.notify_one();
-            this_thread::sleep_for(chrono::milliseconds(3));
+            this_thread::sleep_for(chrono::milliseconds(5));
             lock.lock();
         }
         if (!vals.empty()) {
             val = vals.front();
             vals.pop();
+            auto end = chrono::high_resolution_clock::now();
+            chrono::duration<float> duration = end - start;
+            cout << "size(after pop) " << vals.size() << "   elapsed time " << duration.count()*1000*1000 << " mcs" << endl;
             lock.unlock();
             cv.notify_one();
+            // this_thread::sleep_for(chrono::microseconds(100));
             return true;
         }
         return false;
@@ -106,10 +112,10 @@ void work(int producerNum, int consumerNum, int taskNum, Queue* q) {
 int main() {
     int producerNum[]{1, 2, 4};
     int consumberNum[]{1, 2, 4};
-    int taskNum = 32;
+    int taskNum = 1024*1024;
     int queueSize[]{1, 4, 16};
     Queue* q = new Queue();
-    q->setSize(queueSize[1]);
+    q->setSize(queueSize[2]);
 
     work(producerNum[0], consumberNum[0], taskNum, q);
 }
