@@ -48,8 +48,8 @@ void nulify(long long** m, int r, int c) {
 
 int main() {
     srand(time(nullptr));
-    int rows1=1000, cols1=1000;
-    int rows2=1000, cols2=1000;
+    int rows1=3, cols1=3;
+    int rows2=3, cols2=3;
 
     if (cols1 != rows2) {
         printf("Матрицы не согласованы\n");
@@ -104,5 +104,6 @@ int main() {
     duration = end - start;
     printf("Elapsed time %f s\n", duration.count());
 
-
+    // print(resMatrix, resRow, resCol);
+    // printf("\n");
 }
