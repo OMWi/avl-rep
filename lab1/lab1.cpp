@@ -22,32 +22,16 @@ int main() {
     }
     printf("\n");
 
-    vec1 = _mm_set_pi8(a[7], a[6], a[5], a[4], a[3], a[2], a[1], a[0]);
-    vec2 = _mm_set_pi8(b[7], b[6], b[5], b[4], b[3], b[2], b[1], b[0]);
-    leftRes = _mm_add_pi16(vec1, vec2);
-
-    mask = _mm_cmpgt_pi8(leftRes, zero);
-    
 
     for (int i = 0; i < 2; i++) {
-        // vec1 = _mm_set_pi16(a[4*i+3], a[4*i+2], a[4*i+1], a[4*i]);
-        // vec2 = _mm_set_pi16(b[4*i+3], b[4*i+2], b[4*i+1], b[4*i]);
-        // leftRes = _mm_add_pi16(vec1, vec2); // left brackets
-        __m64 tempLeft;
-        if (i == 0) {
-            tempLeft = _mm_unpacklo_pi8(leftRes, neg);
-        }
-        else if (i == 1) {
-            tempLeft = _mm_unpackhi_pi8(leftRes, neg);
-        }
-        
-
-
+        vec1 = _mm_set_pi16(a[4*i+3], a[4*i+2], a[4*i+1], a[4*i]);
+        vec2 = _mm_set_pi16(b[4*i+3], b[4*i+2], b[4*i+1], b[4*i]);
+        leftRes = _mm_add_pi16(vec1, vec2); // left brackets
         vec1 = _mm_set_pi16(c[4*i+3], c[4*i+2], c[4*i+1], c[4*i]);
         vec2 = _mm_set_pi16(d[4*i+3], d[4*i+2], d[4*i+1], d[4*i]);
         rightRes = _mm_sub_pi16(vec1, vec2); // right brackets
-        loMul = _mm_mullo_pi16(tempLeft, rightRes);
-        hiMul = _mm_mulhi_pi16(tempLeft, rightRes);
+        loMul = _mm_mullo_pi16(leftRes, rightRes);
+        hiMul = _mm_mulhi_pi16(leftRes, rightRes);
         res = _mm_unpacklo_pi16(loMul, hiMul);
         f[4*i] = _m_to_int(res);
         f[4*i+1] = _m_to_int(_mm_unpackhi_pi32(res, zero));
