@@ -1,18 +1,57 @@
-#include <iostream>
+#include <stdio.h>
 #include <thread>
 #include <atomic>
+#include <vector>
 
 using namespace std;
 
 atomic<int> thrIndex{0};
 
-void foo(int8_t* arr, int size) {
+void foo(vector<int>& arr, int size) {
     int curIndex = thrIndex.fetch_add(1);
     while(curIndex < size) {        
-        arr[curIndex]++;
+        arr.at(curIndex)++;
         curIndex = thrIndex.fetch_add(1);
-        this_thread::sleep_for(chrono::nanoseconds(10));
+        // this_thread::sleep_for(chrono::nanoseconds(1));
     }
+}
+
+void task(int numTasks, int numThreads) {
+    printf("Number of threads %d\n", numThreads);
+    thread threads[numThreads];
+
+    vector<int> arr(numTasks, 0);
+
+    thrIndex = 0;
+    auto start = chrono::high_resolution_clock::now();
+
+    for (int i = 0; i < numThreads; i++) {
+        threads[i] = thread([&arr, numTasks](){
+            foo(arr, numTasks);
+        });
+    }
+    for (int i = 0; i < numThreads; i++) {
+        threads[i].join();
+    }
+
+    auto end = chrono::high_resolution_clock::now();    
+    chrono::duration<float> duration = end - start;
+    printf("Elapsed time %f s\n", duration.count());
+
+    bool arrayError = false;
+    for (int i = 0; i < numTasks; i++) {
+        if (arr[i] != 1) {
+            arrayError = true;
+            break;
+        }
+    }
+    if (arrayError) {
+        printf("Array error\n");
+    }
+    else {
+        printf("Array correct\n");
+    }
+    printf("\n");
 }
 
 int main() {
@@ -20,40 +59,6 @@ int main() {
     int numThreads[4]{4, 8, 16, 32};
 
     for (int j = 0; j < 4; j++) {
-        cout << "Number of threads - " << numThreads[j] << endl;
-        thread* threads = new thread[numThreads[j]];
-
-        int8_t arr[numTasks]{0};
-        thrIndex = 0;
-        auto start = chrono::high_resolution_clock::now();
-
-        for (int i = 0; i < numThreads[j]; i++) {
-            threads[i] = thread([&arr, numTasks](){
-                foo(arr, numTasks);
-            });
-        }
-        for (int i = 0; i < numThreads[j]; i++) {
-            threads[i].join();
-        }
-
-        auto end = chrono::high_resolution_clock::now();    
-        chrono::duration<float> duration = end - start;
-        cout << "Elapsed time " << duration.count() << " s" << endl;
-
-        bool arrayError = false;
-        for (int i = 0; i < numTasks; i++) {
-            if (arr[i] != 1) {
-                arrayError = true;
-                break;
-            }
-        }
-        if (arrayError) {
-            cout << "Array error" << endl;
-        }
-        else {
-            cout << "Array correct" << endl;
-        }
-        cout << endl;
-        delete[] threads;
+        task(numTasks, numThreads[j]);
     }
 }
