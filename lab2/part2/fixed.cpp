@@ -1,115 +1,154 @@
-#include <iostream>
+#include <stdio.h>
 #include <thread>
 #include <mutex>
+#include <atomic>
 #include <condition_variable>
 #include <queue>
 
 using namespace std;
 
-class Queue
-{
+class Queue {
+private:
+    queue<uint8_t> vals;
+    int maxSize = 1;
+    mutex mtx;
+    condition_variable cv;
 public:
     void push(uint8_t val) {
-        unique_lock<mutex> lck(mtx);
-        if(curSize == maxSize) cv.wait(lck);
+        unique_lock<mutex> lock(mtx);
+        // if (vals.size() == maxSize) {
+        //     cv.wait(lock);
+        // }
+        cv.wait(lock, [this]{ return vals.size() < maxSize;});
+        // printf("push notified\n");
         vals.push(val);
-        curSize++;
     }
 
     bool pop(uint8_t& val) {
-        unique_lock<mutex> lck(mtx);
+        unique_lock<mutex> lock(mtx);
         if (vals.empty()) {
+            lock.unlock();
+            cv.notify_one();
             this_thread::sleep_for(chrono::milliseconds(1));
+            lock.lock();
         }
         if (!vals.empty()) {
             val = vals.front();
             vals.pop();
-            curSize--;
+            lock.unlock();
             cv.notify_one();
             return true;
         }
         return false;
     }
 
-    void setSize(int size) {
-        if (size > 0) {
-            maxSize = size;
-        }
+    void setSize(int newSize) {
+        if (newSize > 0) maxSize = newSize;
     }
-private:
-    queue<uint8_t> vals;
-    mutex mtx;
-    condition_variable cv;
-    int curSize = 0, maxSize = 1;
+
+    int getSize() {
+        return vals.size();
+    }
 };
 
+atomic<int> producerCount;
+void produce(int taskNum, uint8_t val, Queue* q) {
+    // printf("p+ ");
+    for (int i = 0; i < taskNum; i++) {
+        q->push(val);
+    }
+    producerCount--;
+    // printf("p- ");
+}
+
+int consumerCount[4];
+void consume(Queue* q, int consumerIndex) {
+    // printf("c+ ");
+    uint8_t val = 0;
+    while(true) {
+        if (producerCount > 0) {
+            if (q->pop(val)) {
+                consumerCount[consumerIndex] += val;
+            }
+        }
+        else if (q->pop(val)) {
+            consumerCount[consumerIndex] += val;
+        }
+        else {
+            break;
+        }
+    }
+    // printf("c- ");
+}
+void nulify() {
+    for (int i = 0; i < 4; i++) {
+        consumerCount[i] = 0;
+    }
+}
+
+bool work(int producerNum, int consumerNum, int taskNum, int queueSize) {
+    Queue* q = new Queue();
+    q->setSize(taskNum*10);
+
+    thread consumers[consumerNum];
+    thread producers[producerNum];
+    producerCount = producerNum;
+    nulify();
+
+    printf("Queue:%d; consumers:%d; producers:%d\n", queueSize, consumerNum, producerNum);
+
+    auto start = chrono::high_resolution_clock::now();
+
+    for (int i = 0; i < producerNum; i++) {
+        producers[i] = thread(produce, taskNum, 1, ref(q));
+    }  
+    for (int i = 0; i < consumerNum; i++) {
+        consumers[i] = thread(consume, ref(q), i);
+    }
+    for (int i = 0; i < producerNum; i++) {
+        producers[i].join();
+    }    
+    for (int i = 0; i < consumerNum; i++) {
+        consumers[i].join();
+    }
+
+    auto end = chrono::high_resolution_clock::now();
+    chrono::duration<float> duration = end - start;  
+    printf("q size: %d\n", q->getSize());
+
+    printf("Consumer count: ");
+    for (int i = 0; i < consumerNum; i++) {
+        printf("%d ", consumerCount[i]);
+    }
+    printf("\n");
+    int sum = 0;
+    for (int i = 0; i < consumerNum; i++) {
+        sum += consumerCount[i];
+    }
+    printf("Consumer sum: %d ", sum);
+    printf(sum == consumerNum*taskNum ? "correct\n" : "false(%d)\n", consumerNum*taskNum);
+    printf("Elapsed time %f s\n", duration.count());
+    delete q;
+    return sum == consumerNum*taskNum;
+}
+
 int main() {
-    Queue q;  
-    int consumerNum[]{1, 2, 4};
     int producerNum[]{1, 2, 4};
-    int taskNum = 4*1024*1024;  
-    int qSizes[]{1, 4, 16};
-
-    q.setSize(16);
-    int pCount = 0, cCount = 0;
-
-       
-    // for (int k = 0; k < 3; k++) {
-    //     q.setSize(qSizes[k]);
+    int consumerNum[]{1, 2, 4};
+    int taskNum = 1024*1024*4;
+    printf("Task num: %d\n\n", taskNum);
+    int queueSize[]{1, 4, 16};
+    
+    int testNum = 100;
+    for (int testIndex = 0; testIndex < testNum; testIndex++) {
+        printf("Test %d\n", testIndex+1);
         for (int i = 0; i < 3; i++) {
-            int consumerCount[consumerNum[i]]{};        
-
-            cout << "Producer num:" << producerNum[i] << endl;
-            cout << "Consumer num:" << consumerNum[i] << endl;
-
-            thread* producers = new thread[producerNum[i]];
-            thread* consumers = new thread[consumerNum[i]];
-
-            auto start = chrono::high_resolution_clock::now();
-
-            for (int j = 0; j < producerNum[i]; j++) {
-                producers[j] = thread([taskNum, &q, &pCount](){
-                    for (int amount = 0; amount < taskNum; amount++) {
-                        q.push(1);
-                        cout << "prod " << ++pCount << endl;
-                    }
-                });
-                consumers[j] = thread([j, &consumerCount, &q, &cCount](){
-                    uint8_t val;
-                    while (q.pop(val)) {
-                        consumerCount[j] += val;
-                        cout << "cons " << ++cCount << endl;
-                    }
-                });
+            bool res = work(producerNum[i], consumerNum[i], taskNum, queueSize[i]);
+            printf("\n");
+            if (!res) {
+                printf("test failed\n");
+                return -1;
             }
-            for (int j = 0; j < producerNum[i]; j++) {
-                producers[j].join();
-                consumers[j].join();
-            }
-
-            auto end = chrono::high_resolution_clock::now();
-            chrono::duration<float> duration = end - start;
-            delete[] producers;
-            delete[] consumers;
-
-            cout << "Consumer count: ";
-            for (int j = 0; j < consumerNum[i]; j++) {
-                cout << consumerCount[j] << ' ';
-            }
-            cout << endl;
-            int sum = 0;
-            for (int j = 0; j < consumerNum[i]; j++) {
-                sum += consumerCount[j];
-            }
-            cout << "Consumer count sum: " << sum << endl;
-            if (sum == taskNum*producerNum[i]) {
-                cout << "Count sum correct" << endl;
-            }
-            else {
-                cout << "Count sum incorrect" << endl;
-            }
-            cout << "Elapsed time " << duration.count() << "s" << endl;
-            cout << endl;
-        }        
-    // }  
+        }
+    }
 }
