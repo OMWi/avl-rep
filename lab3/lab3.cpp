@@ -29,8 +29,11 @@ void mulLinear(long long** res, long long** m1, long long** m2, int r1, int c1, 
 void mulParallel(long long** res, long long** m1, long long** m2, int r1, int c1, int r2, int c2) {
     #pragma omp parallel for
     for (int i = 0; i < r1; i++) {
+        printf("external, i = %d; tid=%d\n", i, omp_get_thread_num());
         for (int j = 0; j < c2; j++) {
-            for (int k = 0; k < c1; k++) {
+            printf("inner, i = %d, j = %d; tid=%d\n", i, j, omp_get_thread_num());
+            for (int k = 0; k < c1; k++) {   
+                // printf("double inner, i = %d, j = %d, k = %d, tid=%d\n", i, j, k, omp_get_thread_num());            
                 res[i][j] += m1[i][k]*m2[k][j];
             }
         }
@@ -52,7 +55,7 @@ int main() {
     int rows2=3, cols2=3;
 
     if (cols1 != rows2) {
-        printf("Матрицы не согласованы\n");
+        printf("Error\n");
         return -1;
     }
     printf("Matrix 1 size: %d x %d\n", rows1, cols1);
@@ -72,6 +75,7 @@ int main() {
             matrix2[i][j] = rand() % 10;
         }
     }
+    printf("\n");
 
     // print(matrix1, rows1, cols1);
     // printf("\n");
